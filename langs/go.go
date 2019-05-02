@@ -40,29 +40,19 @@ func (lh *GoLangHelper) RunFromImage() (string, error) {
 func (h *GoLangHelper) DockerfileBuildCmds() []string {
 	r := []string{}
 	// more info on Go multi-stage builds: https://medium.com/travis-on-docker/multi-stage-docker-builds-for-creating-tiny-go-images-e0e1867efe5a
-	// TODO: if we keep the Gopkg.lock on user's drive, we can put this after the dep commands and then the dep layers will be cached.
+	// TODO: if we keep the go.sum on user's drive, we can put this after the dep commands and then the dep layers will be cached.
 	vendor := exists("vendor/")
-	// skip dep tool install if vendor is there
-	if !vendor && exists("Gopkg.toml") {
-		r = append(r, "RUN go get -u github.com/golang/dep/cmd/dep")
-		if exists("Gopkg.lock") {
-			r = append(r, "ADD Gopkg.* /go/src/func/")
-			r = append(r, "RUN cd /go/src/func/ && dep ensure --vendor-only")
-			r = append(r, "ADD . /go/src/func/")
-		} else {
-			r = append(r, "ADD . /go/src/func/")
-			r = append(r, "RUN cd /go/src/func/ && dep ensure")
-		}
-	} else if exists("go.mod") {
-		r = append(r, "WORKDIR /go/src/func/")
+	r = append(r, "WORKDIR /go/src/func/")
+
+	// TODO we could do this unconditionally and theoretically it will work?
+	if exists("go.mod") {
 		r = append(r, "ENV GO111MODULE=on")
 		if vendor {
 			r = append(r, "ENV GOFLAGS=\"-mod=vendor\"")
 		}
-		r = append(r, "COPY . .")
-	} else {
-		r = append(r, "ADD . /go/src/func/")
 	}
+
+	r = append(r, "COPY . .")
 
 	r = append(r, "RUN cd /go/src/func/ && go build -o func")
 
